@@ -1,8 +1,6 @@
 # PCGrad-PyTorch
 PyTorch implementation for "Gradient Surgery for Multi-Task Learning" https://arxiv.org/abs/2001.06782
 
-This is currently a Work in Progress! Please see [the issues tab](https://github.com/OrthoDex/PCGrad-PyTorch/issues) for pending tasks.
-
 For the Tensorflow implementation by the Paper authors, please see https://github.com/tianheyu927/PCGrad
 
 Usage: 
@@ -13,20 +11,22 @@ grad_list is a list of lists
 structured as :
 [
 task1 gradients: [], 
-task1 gradients: [], 
+task2 gradients: [], 
 ...
 taskn gradients:[]
 ]
 """
 
-
-grad_list = pc_grad_update(grad_list)
+grad_list = PCGrad(grad_list).to(device).resolve_grads()
 ```
 
-Currently validated on Multi MNIST: https://github.com/OrthoDex/MultiObjectiveOptimization/tree/feature/pc-grad
+Base Code forked from Base code forked from [OrthoDex/PCGrad-PyTorch](https://github.com/OrthoDex/PCGrad-PyTorch)
 
-## Reproducing Results:
+Changes made:
 
-MultiMNIST: https://app.wandb.ai/ishaan-malhi/multi-task-learning
+- Change code architecture
+- Minor bug fixes
 
-Note: Reproducing paper results for multi-task CIFAR-100 and NYUv2 are pending.
+TODOs:
+
+- Implement parallel processing
