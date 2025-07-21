@@ -12,19 +12,23 @@ class PCGrad():
     if not isinstance(gradient_list, list):
       raise TypeError("gradient_list must be a list")
     if not gradient_list:
-      raise ValueError("gradient_list is empty")
+      raise RuntimeError("gradient_list is empty")
 
     self.gradient_list = gradient_list
     self.num_tasks = len(gradient_list)
     self.device = torch.device("cpu")
+    self.verbose = False
 
-  def resolve_grads(self):
+  def resolve_grads(self, verbose = False):
     # TODO : Throw error if gradients provided are not from shared backbone
+    self.verbose = verbose
     grad_dims = []
     flat_grads_with_dims = list(map(self.flatten_gradient, self.gradient_list))
     flat_grads, grad_dims = zip(*flat_grads_with_dims)
-    flat_grads = torch.stack(flat_grads).to(self.device)
+    flat_grads = torch.stack(flat_grads)
     resolved_grads = self.project_gradients(flat_grads)
+    if self.verbose:
+      print("[PCGrad] Gradient clipping should be applied after PCGrad resolution.")
     return [self.restore_dims(g, dims) for g, dims in zip(resolved_grads, grad_dims)]
   
   def flatten_gradient(self, task_gradient):
@@ -44,13 +48,16 @@ class PCGrad():
       for j in range(i+1, self.num_tasks):
           inner_product = torch.dot(flat_grads[i], flat_grads[j])
           if(inner_product < 0):
+            if self.verbose:
+              print(f"[PCGrad] Conflicting gradients detected between task {i} & {j}!")
             # resolve them
             norm_squared = torch.norm(flat_grads[j])**2
-            if norm_squared.item() > 0:
+            if norm_squared.item() > 1e-10:
               proj_direction = inner_product / norm_squared
               flat_grads[i] = flat_grads[i] - proj_direction * flat_grads[j]
             else:
-              print("ZERO-NORM!")
+              if self.verbose:
+                print(f"[PCGrad] Zero or near-zero gradient norm found for task {j}!")
           else:
             # let them as they are
             continue
@@ -58,16 +65,15 @@ class PCGrad():
 
   def restore_dims(self, task_grad, grad_dim):
     chunk_sizes = [reduce(mul, dims, 1) for dims in grad_dim]
-    
     grad_chunk = torch.split(task_grad, split_size_or_sections=chunk_sizes)
     resized_chunks = []
     for index, grad in enumerate(grad_chunk):
       grad = torch.reshape(grad, grad_dim[index])
       resized_chunks.append(grad)
-
     return resized_chunks
   
   def to(self, device):
+    print(f"[PCGrad] Ensure that gradients are not already on {device} before transferring with .to().")
     self.device = device
     self.gradient_list = [
       [g.to(device) for g in task_grads]
