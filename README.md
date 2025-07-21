@@ -17,7 +17,7 @@ taskn gradients:[]
 ]
 """
 
-grad_list = PCGrad(grad_list).to(device).resolve_grads()
+grad_list = PCGrad(grad_list).to(device).resolve_grads(verbose=True)
 ```
 
 Base Code forked from Base code forked from [OrthoDex/PCGrad-PyTorch](https://github.com/OrthoDex/PCGrad-PyTorch)
